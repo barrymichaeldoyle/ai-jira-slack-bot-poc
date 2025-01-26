@@ -1,7 +1,12 @@
 import { App, LogLevel } from '@slack/bolt';
 import dotenv from 'dotenv';
 import { getAIResponse } from '../openai';
-import { jira } from '../jira';
+import {
+  extractJiraIssueKeys,
+  fetchJiraIssuesDataAndFormatForLLM,
+  jira,
+  JiraErrorMessages,
+} from '../jira';
 import { WebClient } from '@slack/web-api';
 import { SayFn } from '@slack/bolt';
 import { ChatCompletionMessageParam } from 'openai/resources';
@@ -47,7 +52,7 @@ export async function startSlackApp() {
   try {
     await slackApp.start(process.env.PORT || 3000);
     console.log("⚡️ Jeff's Intern is running!");
-    await joinAllPublicSlackChannels();
+    joinAllPublicSlackChannels();
   } catch (error) {
     console.error('Error starting app:', error);
     process.exit(1);
@@ -90,6 +95,9 @@ async function handleBotInteraction({
   client: WebClient;
   say: SayFn;
 }) {
+  // Only respond to messages if a Jira issue key has been provided.
+  function isJiraIssueKeyProvided(text: string) {}
+
   // Show thinking indicator
   const thinkingMessage = await client.chat.postMessage({
     channel: channelId,
@@ -104,8 +112,6 @@ async function handleBotInteraction({
       });
     }
   }
-
-  console.log('NOTICE GREAT THINGS!!!!');
   // Fetch thread messages if this is a thread
   const conversationHistory = await getConversationHistory({
     threadTs,
@@ -114,16 +120,21 @@ async function handleBotInteraction({
     text,
   });
 
-  const userName = await getUserName(userId, client);
-
   // Add the current message separately
-  const messages: ChatCompletionMessageParam[] = [
-    ...conversationHistory,
-    {
-      role: 'user',
-      content: `User "${userName}" said: "${text}"`,
-    },
-  ];
+
+  console.log('messages', conversationHistory);
+
+  // Extract all unique Jira issue keys from the conversation
+  const issueKeys = Array.from(
+    new Set(
+      conversationHistory.flatMap((message) => extractJiraIssueKeys(message.content as string))
+    )
+  );
+
+  // Fetch Jira issues
+  const jiraIssueContextMessage = await fetchJiraIssuesDataAndFormatForLLM(issueKeys);
+
+  console.log('jiraIssueContextMessage', jiraIssueContextMessage);
 
   if (process.env.DISABLE_AI === 'true') {
     await Promise.all([
@@ -135,13 +146,26 @@ async function handleBotInteraction({
     ]);
     return;
   }
-  const response = await getAIResponse(messages);
+
+  if (jiraIssueContextMessage === JiraErrorMessages.JIRA_ISSUES_NOT_FOUND) {
+    await Promise.all([
+      deleteThinkingMessage(),
+      say({
+        text: 'No Jira issues provided. Right now, I can only evaluate specific Jira issues that have been provided in this thread.',
+        thread_ts: threadTs,
+      }),
+    ]);
+    return;
+  }
+
+  // Pass Jira issues to the LLM
+  const response = await getAIResponse(conversationHistory, jiraIssueContextMessage);
 
   deleteThinkingMessage();
   await say({
     text: response,
     thread_ts: threadTs,
-    blocks: [{ type: 'section', text: { type: 'mrkdwn', text: response } }],
+    blocks: [{ type: 'section', text: { type: 'mrkdwn', text: response.replace(/\*\*/g, '*') } }],
   });
 }
 

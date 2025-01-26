@@ -46,6 +46,9 @@ export async function getConversationHistory({
         if (isThinking) {
           return false;
         }
+        if (!msg.text) {
+          return false;
+        }
         return true;
       })
       .map((msg) => {

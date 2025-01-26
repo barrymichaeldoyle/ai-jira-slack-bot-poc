@@ -10,10 +10,15 @@ const openai = new OpenAI({
 });
 
 export async function getAIResponse(
-  threadMessages: Array<ChatCompletionMessageParam> = []
+  threadMessages: Array<ChatCompletionMessageParam> = [],
+  jiraIssueContextMessage: ChatCompletionMessageParam
 ): Promise<string> {
   try {
-    const messages: ChatCompletionMessageParam[] = [SYSTEM_MESSAGE, ...threadMessages];
+    const messages: ChatCompletionMessageParam[] = [
+      SYSTEM_MESSAGE,
+      jiraIssueContextMessage,
+      ...threadMessages,
+    ];
 
     console.log('Messages passed to LLM', messages);
 
@@ -21,7 +26,7 @@ export async function getAIResponse(
       model: 'gpt-4o-mini',
       messages: messages as ChatCompletionMessageParam[],
       temperature: 0.7,
-      max_tokens: 150,
+      max_tokens: 450,
     });
 
     return (

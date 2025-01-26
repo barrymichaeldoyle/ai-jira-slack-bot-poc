@@ -1,5 +1,5 @@
 {
-  "name": "jeffs-intern",
+  "name": "ai-jira-slack-bot-poc",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {

@@ -1,76 +1,27 @@
-import dotenv from 'dotenv';
-import JiraApi from 'jira-client';
 import type { ChatCompletionMessageParam } from 'openai/resources';
-
-dotenv.config();
-
-export const jira = new JiraApi({
-  protocol: 'https',
-  host: process.env.JIRA_HOST as string,
-  username: process.env.JIRA_USERNAME,
-  password: process.env.JIRA_API_TOKEN,
-  apiVersion: '3',
-  strictSSL: true,
-});
-
-export let jiraProjectKeys: string[] = [];
-
-// Add these interfaces at the top of the file, after the imports
-interface JiraSubtask {
-  key: string;
-  fields: {
-    summary: string;
-  };
-}
-
-interface JiraIssueLink {
-  outwardIssue?: {
-    key: string;
-    fields: {
-      summary: string;
-    };
-  };
-  inwardIssue?: {
-    key: string;
-    fields: {
-      summary: string;
-    };
-  };
-}
-
-interface JiraComment {
-  author: {
-    displayName: string;
-  };
-  body: {
-    content: {
-      text: string;
-    }[];
-  };
-  created: string;
-}
+import { config } from '../../config/env';
+import { jira, JiraErrorMessages, jiraProjectKeys } from './index';
+import { JiraComment, JiraIssueLink, JiraSubtask } from './types';
 
 /**
- * Fetches all Jira projects and sets the project keys.
+ * Matches a Jira key pattern in a text string.
  */
-export async function initializeJiraProjects() {
-  const projects = await jira.listProjects();
-  jiraProjectKeys = projects.map((project) => project.key);
-}
-
 export function matchesJiraKeyPattern(text: string, projectKey: string): boolean {
-  // Match the project key followed by numbers, ignoring any trailing punctuation
   const jiraKeyRegex = new RegExp(`${projectKey}-\\d+(?:[^\\w-]|$)`, 'i');
   return jiraKeyRegex.test(text);
 }
 
+/**
+ * Checks if a text string contains any Jira issue keys.
+ */
 export function isJiraIssueKeyProvided(text: string) {
-  // Check if the text contains a Jira issue key pattern (e.g., JIRA-1234)
   return jiraProjectKeys.some((key) => matchesJiraKeyPattern(text, key));
 }
 
+/**
+ * Extracts Jira issue keys from a text string.
+ */
 export function extractJiraIssueKeys(text: string): string[] {
-  // Split on whitespace and special characters
   const words = text.split(/[\s,;]+/);
   return Array.from(
     new Set(
@@ -79,12 +30,10 @@ export function extractJiraIssueKeys(text: string): string[] {
           jiraProjectKeys.some((projectKey) => matchesJiraKeyPattern(word, projectKey))
         )
         .map((key) => {
-          // Transform to uppercase for consistency
           const matchedProject = jiraProjectKeys.find((projectKey) =>
             matchesJiraKeyPattern(key, projectKey)
           );
           if (!matchedProject) return key;
-          // Extract just the numbers, removing any trailing punctuation
           const match = key.match(/\d+/);
           if (!match) return key;
           return `${matchedProject}-${match[0]}`;
@@ -93,10 +42,9 @@ export function extractJiraIssueKeys(text: string): string[] {
   );
 }
 
-export enum JiraErrorMessages {
-  JIRA_ISSUES_NOT_FOUND = 'No Jira issues found',
-}
-
+/**
+ * Fetches Jira issues data and formats them for the LLM.
+ */
 export async function fetchJiraIssuesDataAndFormatForLLM(
   issueKeys: string[]
 ): Promise<ChatCompletionMessageParam | JiraErrorMessages> {
@@ -121,7 +69,7 @@ export async function fetchJiraIssuesDataAndFormatForLLM(
             subtasks: issue.fields.subtasks.map((subtask: JiraSubtask) => ({
               key: subtask.key,
               summary: subtask.fields.summary,
-              link: `<https://barrymichaeldoyle.atlassian.net/browse/${subtask.key}|${subtask.key}>`,
+              link: `<https://${config.JIRA_HOST}/browse/${subtask.key}|${subtask.key}>`,
             })),
             linkedIssues: issue.fields.issuelinks.map((link: JiraIssueLink) => ({
               key: link.outwardIssue?.key || link.inwardIssue?.key,
@@ -129,7 +77,7 @@ export async function fetchJiraIssuesDataAndFormatForLLM(
                 link.outwardIssue?.fields.summary ||
                 link.inwardIssue?.fields.summary ||
                 'No summary',
-              link: `<https://barrymichaeldoyle.atlassian.net/browse/${
+              link: `<https://${config.JIRA_HOST}/browse/${
                 link.outwardIssue?.key || link.inwardIssue?.key
               }|${link.outwardIssue?.key || link.inwardIssue?.key}>`,
             })),
@@ -167,6 +115,8 @@ export async function fetchJiraIssuesDataAndFormatForLLM(
 
   return {
     role: 'assistant',
-    content: `Here are the Jira issues data that are relevant to the conversation: ${JSON.stringify(jiraIssuesData)}`,
+    content: `Here are the Jira issues data that are relevant to the conversation: ${JSON.stringify(
+      jiraIssuesData
+    )}`,
   };
 }

@@ -43,6 +43,5 @@
     "dotenv": "^16.4.7",
     "jira-client": "^8.2.2",
     "openai": "^4.80.1"
-  },
-  "type": "module"
+  }
 }

@@ -1,4 +1,4 @@
-import { matchesJiraKeyPattern } from '..';
+import { matchesJiraKeyPattern } from '../helpers';
 
 describe('matchesJiraKeyPattern', () => {
   it('matches valid Jira issue keys', () => {

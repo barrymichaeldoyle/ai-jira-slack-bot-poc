@@ -1,20 +1,9 @@
-import OpenAI from 'openai';
+import { logger } from '../../utils';
 import { generateAIResponse } from '../ai';
 import { intentsDocumentation } from './intents';
+import type { DetectedIntent } from './types';
 
-interface DetectedIntent {
-  name: string;
-  parameters: {
-    name: string;
-    value: string;
-  }[];
-  confidence: number;
-}
-
-export async function detectIntents(
-  summary: string,
-  openaiClient: OpenAI
-): Promise<DetectedIntent[]> {
+export async function detectIntents(summary: string): Promise<DetectedIntent[]> {
   const systemPrompt = `You are an intent detection system. Given a conversation summary, identify which intents are being requested.
 Available intents:
 ${JSON.stringify(intentsDocumentation.intents, null, 2)}
@@ -40,9 +29,14 @@ Only return valid JSON. Only include intents that are actually being requested. 
 
     const result = JSON.parse(jsonResponse);
 
+    logger('INTENT DETECTION REPSONSE', 'info', result);
+
     if (!result.intents || !Array.isArray(result.intents)) {
+      logger('INTENT DETECTION REPSONSE', 'error', 'No intents detected');
       return [];
     }
+
+    logger('INTENT DETECTION REPSONSE (INTENTS)', 'info', result.intents);
 
     return result.intents.filter(
       (intent: DetectedIntent) =>

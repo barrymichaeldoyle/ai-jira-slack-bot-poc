@@ -32,11 +32,17 @@ export async function generateAIResponse({
   messages,
   temperature = 0.7,
   maxTokens = 450,
-  responseFormat,
+  responseFormat = { type: 'text' },
   model = 'gpt-4o-mini-2024-07-18',
 }: GenerateAIResponseArgs): Promise<string> {
   try {
-    logger('Messages Sent to LLM:', 'info', messages);
+    logger('Messages Sent to LLM:', 'info', {
+      messages,
+      model,
+      temperature,
+      maxTokens,
+      responseFormat,
+    });
 
     const response = await openai.chat.completions.create({
       model,
@@ -46,9 +52,13 @@ export async function generateAIResponse({
       response_format: responseFormat,
     });
 
-    return response.choices[0]?.message?.content || responseFormat?.type === 'json_object'
-      ? '{}'
-      : 'No response generated.';
+    console.log('RESPONSE', response);
+    console.log('RESPONSE MESSAGE', response.choices[0]?.message);
+
+    return (
+      response.choices[0]?.message?.content ||
+      (responseFormat?.type === 'json_object' ? '{}' : 'No response generated.')
+    );
   } catch (error) {
     logger('Error communicating with OpenAI:', 'error', error);
     return 'Sorry, I encountered an error while generating a response.';

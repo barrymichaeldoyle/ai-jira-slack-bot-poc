@@ -2,8 +2,7 @@ import { generateAIResponse } from '../../../features/ai';
 import { ConversationHistoryItem } from '../types';
 
 export async function getThreadSummaryForIntents(conversationHistory: ConversationHistoryItem[]) {
-  const systemPrompt = `
-    Summarize the following Slack conversation into concise and actionable context for the next query. Focus on:
+  const systemPrompt = `Summarize the following Slack conversation into concise and actionable context for the next query. Focus on:
     - Key details such as Jira tickets mentioned, their status, and user requests.
     - Avoid unnecessary commentary or unrelated information.
 
@@ -26,5 +25,6 @@ export async function getThreadSummaryForIntents(conversationHistory: Conversati
   // Generate the summary using AI
   return await generateAIResponse({
     messages: [{ role: 'system', content: systemPrompt }],
+    responseFormat: { type: 'text' },
   });
 }

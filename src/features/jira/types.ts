@@ -81,3 +81,12 @@ export interface JiraTicketDetails {
   created: string;
   updated: string;
 }
+
+export interface DetectedIntent {
+  name: string;
+  parameters: {
+    name: string;
+    value: string;
+  }[];
+  confidence: number;
+}

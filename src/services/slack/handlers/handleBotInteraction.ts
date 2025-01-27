@@ -4,6 +4,8 @@ import { getConversationHistory } from '../utils/getConversationHistory';
 
 import OpenAI from 'openai';
 import { THINKING_TEXT } from '../../../config/constants';
+import { detectIntents } from '../../../features/jira/intentDetection';
+import { handleIntents } from '../../../features/jira/intentHandler';
 import { logger } from '../../../utils';
 import { getThreadSummaryForIntents } from '../utils/getThreadSummaryForIntents';
 
@@ -58,56 +60,15 @@ export async function handleBotInteraction({
 
     logger('SUMMARY', 'info', summary);
 
-    // // Extract Jira issue keys from the conversation
-    // const issueKeys = extractJiraIssueKeys(conversationHistory.map((msg) => msg.content).join(' '));
+    const intents = await detectIntents(summary);
 
-    // console.log('Extracted Jira issue keys:', issueKeys);
+    logger('INTENTS', 'info', intents);
 
-    // if (issueKeys.length === 0) {
-    //   await Promise.all([
-    //     deleteThinkingMessage(),
-    //     say({
-    //       text: 'No Jira issue keys were found in the conversation.',
-    //       thread_ts: threadTs,
-    //     }),
-    //   ]);
-    //   return;
-    // }
+    const finalOutput = await handleIntents({ detectedIntents: intents, summary });
 
-    // // Fetch Jira issue details and format them for the AI
-    // const jiraIssueContext = await fetchJiraIssuesDataAndFormatForLLM(issueKeys);
+    logger('FINAL OUTPUT', 'info', finalOutput);
 
-    // if (jiraIssueContext === JiraErrorMessages.JIRA_ISSUES_NOT_FOUND || !jiraIssueContext) {
-    //   await Promise.all([
-    //     deleteThinkingMessage(),
-    //     say({
-    //       text: 'No Jira issues could be retrieved. Please ensure the issue keys are correct.',
-    //       thread_ts: threadTs,
-    //     }),
-    //   ]);
-    //   return;
-    // }
-
-    // // Pass the conversation history and Jira data to the AI
-    // const aiResponse = await generateAIResponse([...conversationHistory, jiraIssueContext]);
-
-    // // Delete the thinking message and respond with the AI-generated response
-    // await Promise.all([
-    //   deleteThinkingMessage(),
-    //   say({
-    //     text: aiResponse,
-    //     thread_ts: threadTs,
-    //     blocks: [
-    //       {
-    //         type: 'section',
-    //         text: {
-    //           type: 'mrkdwn',
-    //           text: aiResponse.replace(/\*\*/g, '*'), // Adjust Markdown formatting for Slack
-    //         },
-    //       },
-    //     ],
-    //   }),
-    // ]);
+    await Promise.all([deleteThinkingMessage(), say({ text: finalOutput, thread_ts: threadTs })]);
   } catch (error) {
     console.error('Error handling bot interaction:', error);
 

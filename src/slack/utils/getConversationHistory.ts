@@ -1,7 +1,8 @@
-import { ChatCompletionMessageParam } from 'openai/resources';
-import { WebClient } from '@slack/web-api';
-import { THINKING_TEXT, THINKING_TEXT_RAW } from '../../constants';
+import type { ConversationsRepliesResponse, WebClient } from '@slack/web-api';
+import type { ChatCompletionMessageParam } from 'openai/resources';
+
 import { getUserName } from './getUserName';
+import { THINKING_TEXT, THINKING_TEXT_RAW } from '../../constants';
 
 export async function getConversationHistory({
   threadTs,
@@ -80,13 +81,13 @@ export async function getConversationHistory({
 }
 
 async function getUserIdsNamesMap(
-  messages: any[],
+  messages: ConversationsRepliesResponse['messages'],
   client: WebClient
 ): Promise<Record<string, string>> {
   const userNameMap: Record<string, string> = {};
   // Get unique user IDs
   const uniqueUserIds = [
-    ...new Set(messages.filter((message) => message.user).map((message) => message.user!)),
+    ...new Set(messages?.filter((message) => message.user).map((message) => message.user!)),
   ];
 
   // Fetch all user names in parallel

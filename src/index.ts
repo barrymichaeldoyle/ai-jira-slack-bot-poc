@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 
-import { startSlackApp } from './slack';
 import { initializeJiraProjects } from './jira';
+import { startSlackApp } from './slack';
 
 dotenv.config();
 

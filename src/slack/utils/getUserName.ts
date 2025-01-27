@@ -1,4 +1,4 @@
-import { WebClient } from '@slack/web-api';
+import type { WebClient } from '@slack/web-api';
 
 export async function getUserName(userId: string, client: WebClient): Promise<string> {
   try {

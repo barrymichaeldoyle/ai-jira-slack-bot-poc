@@ -1,18 +1,17 @@
+import type { SayFn } from '@slack/bolt';
 import { App, LogLevel } from '@slack/bolt';
+import type { WebClient } from '@slack/web-api';
 import dotenv from 'dotenv';
-import { getAIResponse } from '../openai';
+
+import { THINKING_TEXT } from '../constants';
 import {
   extractJiraIssueKeys,
   fetchJiraIssuesDataAndFormatForLLM,
   jira,
   JiraErrorMessages,
 } from '../jira';
-import { WebClient } from '@slack/web-api';
-import { SayFn } from '@slack/bolt';
-import { ChatCompletionMessageParam } from 'openai/resources';
-import { THINKING_TEXT } from '../constants';
+import { getAIResponse } from '../openai';
 import { getConversationHistory } from './utils/getConversationHistory';
-import { getUserName } from './utils/getUserName';
 
 dotenv.config();
 
@@ -82,22 +81,17 @@ slackApp.message(/hey intern/i, async ({ message, say }) => {
 
 async function handleBotInteraction({
   text,
-  userId,
   channelId,
   threadTs,
   client,
   say,
 }: {
   text: string;
-  userId: string;
   channelId: string;
   threadTs?: string;
   client: WebClient;
   say: SayFn;
 }) {
-  // Only respond to messages if a Jira issue key has been provided.
-  function isJiraIssueKeyProvided(text: string) {}
-
   // Show thinking indicator
   const thinkingMessage = await client.chat.postMessage({
     channel: channelId,
@@ -184,7 +178,6 @@ slackApp.event('app_mention', async ({ event, say, client }) => {
 
     await handleBotInteraction({
       text: messageWithoutMention,
-      userId: event.user,
       channelId: event.channel,
       threadTs: event.thread_ts || event.ts,
       client,
@@ -204,7 +197,6 @@ slackApp.message(async ({ message, say, client }) => {
 
     await handleBotInteraction({
       text: message.text || '',
-      userId: message.user,
       channelId: message.channel,
       threadTs: 'thread_ts' in message ? message.thread_ts : message.ts,
       client,

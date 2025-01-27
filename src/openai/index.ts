@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
-import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+
 import { SYSTEM_MESSAGE } from '../constants';
 
 dotenv.config();

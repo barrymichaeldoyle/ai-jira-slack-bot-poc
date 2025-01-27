@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import JiraApi from 'jira-client';
-import { ChatCompletionMessageParam } from 'openai/resources';
+import type { ChatCompletionMessageParam } from 'openai/resources';
 
 dotenv.config();
 
@@ -14,6 +14,41 @@ export const jira = new JiraApi({
 });
 
 export let jiraProjectKeys: string[] = [];
+
+// Add these interfaces at the top of the file, after the imports
+interface JiraSubtask {
+  key: string;
+  fields: {
+    summary: string;
+  };
+}
+
+interface JiraIssueLink {
+  outwardIssue?: {
+    key: string;
+    fields: {
+      summary: string;
+    };
+  };
+  inwardIssue?: {
+    key: string;
+    fields: {
+      summary: string;
+    };
+  };
+}
+
+interface JiraComment {
+  author: {
+    displayName: string;
+  };
+  body: {
+    content: {
+      text: string;
+    }[];
+  };
+  created: string;
+}
 
 /**
  * Fetches all Jira projects and sets the project keys.
@@ -83,12 +118,12 @@ export async function fetchJiraIssuesDataAndFormatForLLM(
             reporter: issue.fields.reporter?.displayName || 'Unknown',
             createdDate: issue.fields.created,
             lastUpdatedDate: issue.fields.updated,
-            subtasks: issue.fields.subtasks.map((subtask: any) => ({
+            subtasks: issue.fields.subtasks.map((subtask: JiraSubtask) => ({
               key: subtask.key,
               summary: subtask.fields.summary,
               link: `<https://barrymichaeldoyle.atlassian.net/browse/${subtask.key}|${subtask.key}>`,
             })),
-            linkedIssues: issue.fields.issuelinks.map((link: any) => ({
+            linkedIssues: issue.fields.issuelinks.map((link: JiraIssueLink) => ({
               key: link.outwardIssue?.key || link.inwardIssue?.key,
               summary:
                 link.outwardIssue?.fields.summary ||
@@ -98,14 +133,17 @@ export async function fetchJiraIssuesDataAndFormatForLLM(
                 link.outwardIssue?.key || link.inwardIssue?.key
               }|${link.outwardIssue?.key || link.inwardIssue?.key}>`,
             })),
-            recentComments: issue.fields.comment?.comments.slice(-1).map((comment: any) => ({
-              author: comment.author.displayName,
-              content: comment.body.content.map((c: any) => c.text).join(' ') || 'No content',
-              date: comment.created,
-            })),
+            recentComments: issue.fields.comment?.comments
+              .slice(-1)
+              .map((comment: JiraComment) => ({
+                author: comment.author.displayName,
+                content: comment.body.content.map((c) => c.text).join(' ') || 'No content',
+                date: comment.created,
+              })),
           },
         };
       } catch (error) {
+        console.error('Error fetching Jira issue data:', error);
         return {
           key: issueKey,
           success: false,

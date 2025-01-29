@@ -1,6 +1,16 @@
 import dotenv from 'dotenv';
+import * as fs from 'fs';
+import { resolve } from 'path';
 
-dotenv.config();
+const envPath = resolve(__dirname, '../../.env');
+
+// Read the file directly and parse it manually
+const envConfig = dotenv.parse(fs.readFileSync(envPath));
+
+// Manually set the environment variables
+Object.entries(envConfig).forEach(([key, value]) => {
+  process.env[key] = value;
+});
 
 interface EnvConfig {
   SLACK_BOT_TOKEN: string;

@@ -1,9 +1,26 @@
-import { startApp } from './app/start'; // Start the app
-import './config/env'; // Ensure environment variables are loaded
-import { logger } from './utils';
+import { config } from './config/env';
+import { JiraProjectManager } from './jira';
+import { joinAllPublicSlackChannels, slack } from './slack';
+
+async function startApp() {
+  try {
+    console.log('Initializing Jira projects...');
+    await JiraProjectManager.getInstance().initialize();
+
+    console.log(`Starting Slack app on port ${config.PORT}...`);
+    await slack.start(config.PORT);
+    console.log(`⚡️ Slack app is running on port ${config.PORT}`);
+
+    console.log('Joining all public Slack channels...');
+    await joinAllPublicSlackChannels();
+  } catch (error) {
+    console.error('Detailed startup error:', error);
+    throw error;
+  }
+}
 
 // Start the application
 startApp().catch((error: Error) => {
-  logger('❌ Application failed to start:', 'error', error);
-  process.exit(1); // Exit with a non-zero status code to indicate failure
+  console.error('❌ Application failed to start:', error);
+  process.exit(1);
 });
